@@ -113,13 +113,63 @@ public class SudokuGameManager : MonoBehaviour
     #endregion
     
     #region Interaction & Win Logic
-    public void OnCellSelected(SudokuCell cell)
+    public void OnCellSelected(SudokuCell selected)
     {
-        if (_selectedCell != null) _selectedCell.SetSelected(false);
-        _selectedCell = cell;
-        _selectedCell.SetSelected(true);
+        _selectedCell = selected;
+
+        // 1. Clear ALL highlights first
+        foreach (var cell in _allCells)
+        {
+            cell.SetHighlight(false);
+        }
+
+        // 2. Set the main selection
+        _selectedCell.SetHighlight(true, true);
+
+        // 3. Highlight related cells
+        if (_selectedCell.Value != 0)
+        {
+            // Highlight all cells with the SAME VALUE
+            HighlightSameValues(_selectedCell.Value);
+        }
+        else
+        {
+            // Highlight Row, Column, and 3x3 Part
+            HighlightRelatedArea(_selectedCell.row, _selectedCell.col);
+        }
     }
 
+    void HighlightSameValues(int value)
+    {
+        foreach (SudokuCell cell in _allCells)
+        {
+            if (cell.Value == value)
+            {
+                cell.SetHighlight(true, false);
+            }
+        }
+    }
+
+    void HighlightRelatedArea(int row, int col)
+    {
+        int startRow = row - row % 3, startCol = col - col % 3;
+
+        foreach (SudokuCell cell in _allCells)
+        {
+            //Same row or same column
+            bool sameRow = (cell.row == row) || (cell.col == col);
+            
+            //Same 3*3 part
+            bool samePart = (cell.row >= startRow && cell.row < startRow + 3 &&
+                             cell.col >= startCol && cell.col < startCol + 3);
+
+            if (sameRow || samePart)
+            {
+                cell.SetHighlight(true, false);
+            }
+        }
+    }
+    
     void HandleInput()
     {
         for (int i = 1; i <= 9; i++)
@@ -138,7 +188,7 @@ public class SudokuGameManager : MonoBehaviour
         for (int r = 0; r < 9; r++)
         for (int c = 0; c < 9; c++)
             if (_allCells[r, c].Value != _solution[r, c]) return;
-
+        
         congratsPanel.SetActive(true);
     }
     #endregion

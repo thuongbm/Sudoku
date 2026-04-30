@@ -7,7 +7,7 @@
     <list default="true" id="7b854b52-3f19-4723-bd23-25bc5aa9f448" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.Sudoku/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.Sudoku/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Assets/Scripts/SudokuCell.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scripts/SudokuCell.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ProjectSettings/ProjectSettings.asset" beforeDir="false" afterPath="$PROJECT_DIR$/ProjectSettings/ProjectSettings.asset" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/Assets/Scripts/SudokuGameManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scripts/SudokuGameManager.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -94,7 +94,7 @@
       <workItem from="1777450945878" duration="3922000" />
       <workItem from="1777471765638" duration="8483000" />
       <workItem from="1777485100735" duration="1003000" />
-      <workItem from="1777559016557" duration="1933000" />
+      <workItem from="1777559016557" duration="4907000" />
     </task>
     <servers />
   </component>

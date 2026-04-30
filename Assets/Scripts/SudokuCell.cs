@@ -15,7 +15,7 @@ public class SudokuCell : MonoBehaviour
 
     [Header("Colors for State")]
     public Color selectedColor = new Color(1, 1, 1, 0.5f); // Semi-transparent white
-    public Color errorColor = new Color(1, 0, 0, 0.3f);    // Semi-transparent red
+    public Color hintColor = new Color(1, 1, 1, 0.2f);    // Semi-transparent red
     public Color idleColor = new Color(0, 0, 0, 0);       // Completely transparent
     
     [HideInInspector] public int row, col;
@@ -50,6 +50,17 @@ public class SudokuCell : MonoBehaviour
     public void SetSelected(bool isSelected) {
         cellBackground.color = isSelected ? selectedColor : idleColor;
     }
+    
+    //handle difference highlight types
+    public void SetHighlight(bool isHighlighted, bool isMainSelection = false)
+    {
+        if (!isHighlighted) {
+            cellBackground.color = idleColor;
+        } else {
+            cellBackground.color = isMainSelection ? selectedColor : hintColor;
+        }
+    }
+    
     //button can trigger a selection
     public void OnCellClicked() 
     {
