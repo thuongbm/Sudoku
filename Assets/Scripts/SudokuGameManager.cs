@@ -16,7 +16,7 @@ public class SudokuGameManager : MonoBehaviour
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        GenerateNewGame(40); // 40 empty cells
+        GenerateNewGame(1); // 40 empty cells
     }
 
     // Update is called once per frame

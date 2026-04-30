@@ -33,6 +33,7 @@ public class SudokuCell : MonoBehaviour
         _manager = mgr;
         isFixed = (val != 0);
         Value = val;
+        SetSelected(false); // make it transparent at the start
     }
 
     private void RefreshUI() {
