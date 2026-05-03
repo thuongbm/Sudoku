@@ -22,6 +22,11 @@ public class SudokuGameManager : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if (_selectedCell != null)
+        {
+            HandleNavigation();
+        }
+        
         if (_selectedCell != null && !_selectedCell.isFixed)
         {
             HandleInput();
@@ -73,7 +78,7 @@ public class SudokuGameManager : MonoBehaviour
             nums[rand] = temp;
         }
 
-        foreach (int n in nums)
+        foreach (int n in nums) 
         {
             if (IsSafe(grid, row, col, n))
             {
@@ -183,6 +188,26 @@ public class SudokuGameManager : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.Backspace)) _selectedCell.Value = 0;
     }
 
+    void HandleNavigation()
+    {
+        int newRow = _selectedCell.row;
+        int newCol = _selectedCell.col;
+
+        if (Input.GetKeyDown(KeyCode.DownArrow)) newRow++;
+        if (Input.GetKeyDown(KeyCode.UpArrow)) newRow--;
+        if (Input.GetKeyDown(KeyCode.LeftArrow)) newCol--;
+        if (Input.GetKeyDown(KeyCode.RightArrow)) newCol++;
+
+        //Wrap-around math 
+        newRow = (newRow + 9) % 9;
+        newCol = (newCol + 9) % 9;
+
+        if (newRow != _selectedCell.row || newCol != _selectedCell.col)
+        {
+            OnCellSelected(_allCells[newRow, newCol]);
+        }
+    }
+    
     void CheckWin()
     {
         for (int r = 0; r < 9; r++)
