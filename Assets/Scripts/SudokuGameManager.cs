@@ -3,20 +3,26 @@ using UnityEngine;
 
 public class SudokuGameManager : MonoBehaviour
 {
+    [Header("UI Panels")]
+    public GameObject mainMenuPanel;
+    public GameObject difficultyPanel;
+    public GameObject gamePanel;
+    public GameObject congratsPanel;
+    
     [Header("UI Setup")]
     public GameObject cellPrefab; // Sudoku cell
     public Transform gridParent; // The object with the GridLayoutGroup
-    public GameObject congratsPanel;
     
     private SudokuCell[,] _allCells = new SudokuCell[9, 9];
     private int[,] _solution = new int[9, 9]; // the full solved board
     private int[,] _puzzle = new int[9, 9]; // the board with holes
     private SudokuCell _selectedCell;
+    private int _currentDifficulty = 40;
     
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        GenerateNewGame(1); // 40 empty cells
+        ShowPanel(mainMenuPanel); 
     }
 
     // Update is called once per frame
@@ -32,6 +38,35 @@ public class SudokuGameManager : MonoBehaviour
             HandleInput();
         } 
     }
+
+    #region Menu Navigation
+
+    public void OpenDifficultySelection()
+    {
+        ShowPanel(difficultyPanel);
+    }
+
+    public void StartGame()
+    {
+        ShowPanel(gamePanel);
+        GenerateNewGame(_currentDifficulty); // depend on _currerntDifficulty
+    }
+
+    public void BackToMenu()
+    {
+        ShowPanel(mainMenuPanel);
+    }
+    
+    public void ShowPanel(GameObject panelToShow)
+    {
+        mainMenuPanel.SetActive(panelToShow == mainMenuPanel);
+        difficultyPanel.SetActive(panelToShow == difficultyPanel);
+        gamePanel.SetActive(panelToShow == gamePanel);
+        congratsPanel.SetActive(false);
+    }
+    
+    #endregion
+    
     void GenerateNewGame(int difficulty)
     {
         // clear existing board if any
