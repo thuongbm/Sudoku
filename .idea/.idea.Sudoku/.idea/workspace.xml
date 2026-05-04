@@ -4,12 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="7b854b52-3f19-4723-bd23-25bc5aa9f448" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/.idea.Sudoku/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.Sudoku/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scenes/0.unity" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scenes/0.unity" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scripts/SudokuGameManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scripts/SudokuGameManager.cs" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/TextMesh Pro/Resources/Fonts &amp; Materials/LiberationSans SDF - Fallback.asset" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/TextMesh Pro/Resources/Fonts &amp; Materials/LiberationSans SDF - Fallback.asset" afterDir="false" />
-    </list>
+    <list default="true" id="7b854b52-3f19-4723-bd23-25bc5aa9f448" name="Changes" comment="" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -98,7 +93,7 @@
       <workItem from="1777485100735" duration="1003000" />
       <workItem from="1777559016557" duration="5152000" />
       <workItem from="1777813710844" duration="5009000" />
-      <workItem from="1777910744733" duration="2566000" />
+      <workItem from="1777910744733" duration="3315000" />
     </task>
     <servers />
   </component>

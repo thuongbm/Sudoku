@@ -52,6 +52,12 @@ public class SudokuGameManager : MonoBehaviour
         GenerateNewGame(_currentDifficulty); // depend on _currerntDifficulty
     }
 
+    public void SetDifficulty(int numberOfHoles)
+    {
+        _currentDifficulty = numberOfHoles;
+        Debug.Log("Difficulty changed to: " + numberOfHoles + " empty cells.");
+    }
+    
     public void BackToMenu()
     {
         ShowPanel(mainMenuPanel);
