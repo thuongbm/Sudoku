@@ -10,54 +10,61 @@ public class SudokuGameManager : MonoBehaviour
     public GameObject congratsPanel;
     
     [Header("UI Setup")]
-    public GameObject cellPrefab; // Sudoku cell
+    public GameObject cellPrefab; // Sudoku cell prefab
     public Transform gridParent; // The object with the GridLayoutGroup
     
     private SudokuCell[,] _allCells = new SudokuCell[9, 9];
-    private int[,] _solution = new int[9, 9]; // the full solved board
-    private int[,] _puzzle = new int[9, 9]; // the board with holes
+    private int[,] _solution = new int[9, 9]; 
+    private int[,] _puzzle = new int[9, 9]; 
     private SudokuCell _selectedCell;
-    private int _currentDifficulty = 40;
+    private int _currentDifficulty = 40; // Default to Medium
     
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
+    private Stack<SudokuMove> _undoStack = new Stack<SudokuMove>();
+    private struct SudokuMove
+    {
+        public SudokuCell cell;
+        public int preValue;
+    }
     void Start()
     {
+        // Start by only showing the Main Menu
         ShowPanel(mainMenuPanel); 
     }
 
-    // Update is called once per frame
     void Update()
     {
+        // Navigation should work on any selected cell
         if (_selectedCell != null)
         {
             HandleNavigation();
         }
         
+        // Input should only work on non-fixed cells
         if (_selectedCell != null && !_selectedCell.isFixed)
         {
             HandleInput();
         } 
     }
 
-    #region Menu Navigation
+    #region Menu Navigation & UI Logic
 
     public void OpenDifficultySelection()
     {
         ShowPanel(difficultyPanel);
     }
 
-    public void StartGame()
-    {
-        ShowPanel(gamePanel);
-        GenerateNewGame(_currentDifficulty); // depend on _currerntDifficulty
-    }
-
     public void SetDifficulty(int numberOfHoles)
     {
         _currentDifficulty = numberOfHoles;
-        Debug.Log("Difficulty changed to: " + numberOfHoles + " empty cells.");
+        Debug.Log("Difficulty set to: " + numberOfHoles + " holes.");
     }
-    
+
+    public void StartGame()
+    {
+        ShowPanel(gamePanel);
+        GenerateNewGame(_currentDifficulty);
+    }
+
     public void BackToMenu()
     {
         ShowPanel(mainMenuPanel);
@@ -68,27 +75,31 @@ public class SudokuGameManager : MonoBehaviour
         mainMenuPanel.SetActive(panelToShow == mainMenuPanel);
         difficultyPanel.SetActive(panelToShow == difficultyPanel);
         gamePanel.SetActive(panelToShow == gamePanel);
+        // Congrats panel is handled separately but closed when switching menus
         congratsPanel.SetActive(false);
     }
     
     #endregion
     
+    #region Board Generation
+
     void GenerateNewGame(int difficulty)
     {
-        // clear existing board if any
+        // Clear existing board UI
         foreach(Transform child in gridParent) Destroy(child.gameObject);
         
-        // genarate a full valid Sudoku solution
+        // 1. Generate full solution
         _solution = new int[9, 9];
         FillBoardRecursive(_solution, 0, 0);
         
-        // copy solution and remove numbers
-        _puzzle = (int[,])_solution.Clone(); // Copy the full board first
-        RemoveNumbers(_puzzle, difficulty);  // Now poke holes in the copy
+        // 2. Clone solution to puzzle and remove numbers
+        _puzzle = (int[,])_solution.Clone(); 
+        RemoveNumbers(_puzzle, difficulty); 
         
-        //spawn UI
+        // 3. Spawn the UI cells
         CreateBoard();
     }
+
     void CreateBoard()
     {
         for (int r = 0; r < 9; r++)
@@ -97,90 +108,44 @@ public class SudokuGameManager : MonoBehaviour
             {
                 GameObject go = Instantiate(cellPrefab, gridParent);
                 SudokuCell cell = go.GetComponent<SudokuCell>();
+                
                 cell.Setup(_puzzle[r, c], this);
                 cell.row = r;
                 cell.col = c;
                 _allCells[r, c] = cell;
             }
         }
-    }
-    #region Backtracking Logic
-    bool FillBoardRecursive(int[,] grid, int row, int col)
-    {
-        if (col >= 9) { row++; col = 0; }
-        if (row >= 9) return true;
 
-        // Try numbers in random order for a unique board every time
-        List<int> nums = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-        for (int i = 0; i < nums.Count; i++) {
-            int temp = nums[i];
-            int rand = Random.Range(i, nums.Count);
-            nums[i] = nums[rand];
-            nums[rand] = temp;
-        }
+        // Default selection to the top-left cell so navigation works immediately
+        OnCellSelected(_allCells[0, 0]);
+    }
 
-        foreach (int n in nums) 
-        {
-            if (IsSafe(grid, row, col, n))
-            {
-                grid[row, col] = n;
-                if (FillBoardRecursive(grid, row, col + 1)) return true;
-                grid[row, col] = 0;
-            }
-        }
-        return false;
-    }
-    bool IsSafe(int[,] grid, int row, int col, int num)
-    {
-        for (int i = 0; i < 9; i++)
-        {
-            if (grid[row, i] == num || grid[i, col] == num) return false;
-        }
-        int sRow = row - row % 3, sCol = col - col % 3;
-        for (int i = 0; i < 3; i++)
-        for (int j = 0; j < 3; j++)
-            if (grid[i + sRow, j + sCol] == num) return false;
-        return true;
-    }
-    
-    void RemoveNumbers(int[,] grid, int count)
-    {
-        while (count > 0)
-        {
-            int r = Random.Range(0, 9);
-            int c = Random.Range(0, 9);
-            if (grid[r, c] != 0)
-            {
-                grid[r, c] = 0;
-                count--;
-            }
-        }
-    }
     #endregion
-    
-    #region Interaction & Win Logic
+
+    #region Interaction & Highlighting Logic
+
     public void OnCellSelected(SudokuCell selected)
     {
         _selectedCell = selected;
 
-        // 1. Clear ALL highlights first
+        // 1. Reset all cells to idle color
         foreach (var cell in _allCells)
         {
             cell.SetHighlight(false);
         }
 
-        // 2. Set the main selection
+        // 2. Highlight the main clicked cell
         _selectedCell.SetHighlight(true, true);
 
-        // 3. Highlight related cells
+        // 3. Contextual Highlights
         if (_selectedCell.Value != 0)
         {
-            // Highlight all cells with the SAME VALUE
+            // If cell has a number, highlight all cells with the SAME VALUE
             HighlightSameValues(_selectedCell.Value);
         }
         else
         {
-            // Highlight Row, Column, and 3x3 Part
+            // If cell is empty, highlight its Row, Column, and 3x3 Block
             HighlightRelatedArea(_selectedCell.row, _selectedCell.col);
         }
     }
@@ -202,31 +167,89 @@ public class SudokuGameManager : MonoBehaviour
 
         foreach (SudokuCell cell in _allCells)
         {
-            //Same row or same column
-            bool sameRow = (cell.row == row) || (cell.col == col);
-            
-            //Same 3*3 part
+            bool sameRowOrCol = (cell.row == row) || (cell.col == col);
             bool samePart = (cell.row >= startRow && cell.row < startRow + 3 &&
                              cell.col >= startCol && cell.col < startCol + 3);
 
-            if (sameRow || samePart)
+            if (sameRowOrCol || samePart)
             {
                 cell.SetHighlight(true, false);
             }
         }
     }
+
+    #region Side Menu Funcions
+
+    public void UndoMove()
+    {
+        if (_undoStack.Count > 0)
+        {
+            SudokuMove lastMove = _undoStack.Pop();
+            lastMove.cell.Value = lastMove.preValue;
+            OnCellSelected(lastMove.cell);
+        }
+    }
+
+    public void EraseCell()
+    {
+        if (_selectedCell != null && !_selectedCell.isFixed && _selectedCell.Value != 0)
+        {
+            RecordMove(_selectedCell, _selectedCell.Value);
+            _selectedCell.Value = 0;
+            OnCellSelected(_selectedCell);
+        }
+    }
+
+    public void SaveGame()
+    {
+        // For your internship: This is a great place to show off PlayerPrefs or JSON saving!
+        Debug.Log("Game Saved!");
+    }
+
+    public void QuitToMenu()
+    {
+        _undoStack.Clear();
+        ShowPanel(mainMenuPanel);
+    }
     
+    public void ChangeTheme()
+    {
+        // Simple toggle example: you could swap background colors here
+        Debug.Log("Theme Changed!");
+    }
+    
+    private void RecordMove(SudokuCell cell, int oldValue)
+    {
+        _undoStack.Push(new SudokuMove { cell = cell, preValue = oldValue });
+    }
+
+    #endregion
+    
+    #endregion
+
+    #region Input & Navigation Handling
+
     void HandleInput()
     {
         for (int i = 1; i <= 9; i++)
         {
             if (Input.GetKeyDown(i.ToString()) || Input.GetKeyDown("[" + i + "]"))
             {
+                RecordMove(_selectedCell, _selectedCell.Value);
                 _selectedCell.Value = i;
+                // Refresh highlights to show all cells with this new number
+                OnCellSelected(_selectedCell); 
                 CheckWin();
             }
         }
-        if (Input.GetKeyDown(KeyCode.Backspace)) _selectedCell.Value = 0;
+
+        if (Input.GetKeyDown(KeyCode.Backspace) || Input.GetKeyDown(KeyCode.Delete))
+        {
+            RecordMove(_selectedCell, _selectedCell.Value);
+            _selectedCell.Value = 0;
+            // Return to area highlights since cell is now empty
+            OnCellSelected(_selectedCell); 
+        }
     }
 
     void HandleNavigation()
@@ -234,15 +257,17 @@ public class SudokuGameManager : MonoBehaviour
         int newRow = _selectedCell.row;
         int newCol = _selectedCell.col;
 
+        // Direction Fix: Down increases row, Up decreases row
         if (Input.GetKeyDown(KeyCode.DownArrow)) newRow++;
         if (Input.GetKeyDown(KeyCode.UpArrow)) newRow--;
         if (Input.GetKeyDown(KeyCode.LeftArrow)) newCol--;
         if (Input.GetKeyDown(KeyCode.RightArrow)) newCol++;
 
-        //Wrap-around math 
+        // Wrap-around math (keeps index 0-8)
         newRow = (newRow + 9) % 9;
         newCol = (newCol + 9) % 9;
 
+        // Logic Fix: Use OR (||) so it triggers if either row or col changes
         if (newRow != _selectedCell.row || newCol != _selectedCell.col)
         {
             OnCellSelected(_allCells[newRow, newCol]);
@@ -252,10 +277,74 @@ public class SudokuGameManager : MonoBehaviour
     void CheckWin()
     {
         for (int r = 0; r < 9; r++)
-        for (int c = 0; c < 9; c++)
-            if (_allCells[r, c].Value != _solution[r, c]) return;
+        {
+            for (int c = 0; c < 9; c++)
+            {
+                if (_allCells[r, c].Value != _solution[r, c]) return;
+            }
+        }
         
         congratsPanel.SetActive(true);
     }
+
+    #endregion
+
+    #region Backtracking Algorithm
+
+    bool FillBoardRecursive(int[,] grid, int row, int col)
+    {
+        if (col >= 9) { row++; col = 0; }
+        if (row >= 9) return true;
+
+        List<int> nums = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
+        // Shuffle numbers for unique board generation
+        for (int i = 0; i < nums.Count; i++) {
+            int temp = nums[i];
+            int rand = Random.Range(i, nums.Count);
+            nums[i] = nums[rand];
+            nums[rand] = temp;
+        }
+
+        foreach (int n in nums) 
+        {
+            if (IsSafe(grid, row, col, n))
+            {
+                grid[row, col] = n;
+                if (FillBoardRecursive(grid, row, col + 1)) return true;
+                grid[row, col] = 0;
+            }
+        }
+        return false;
+    }
+
+    bool IsSafe(int[,] grid, int row, int col, int num)
+    {
+        for (int i = 0; i < 9; i++)
+        {
+            if (grid[row, i] == num || grid[i, col] == num) return false;
+        }
+
+        int sRow = row - row % 3, sCol = col - col % 3;
+        for (int i = 0; i < 3; i++)
+            for (int j = 0; j < 3; j++)
+                if (grid[i + sRow, j + sCol] == num) return false;
+
+        return true;
+    }
+    
+    void RemoveNumbers(int[,] grid, int count)
+    {
+        while (count > 0)
+        {
+            int r = Random.Range(0, 9);
+            int c = Random.Range(0, 9);
+            if (grid[r, c] != 0)
+            {
+                grid[r, c] = 0;
+                count--;
+            }
+        }
+    }
+
     #endregion
 }
