@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 public class SudokuGameManager : MonoBehaviour
@@ -62,6 +63,8 @@ public class SudokuGameManager : MonoBehaviour
     public void StartGame()
     {
         ShowPanel(gamePanel);
+        //Clear history
+        _undoStack.Clear();
         GenerateNewGame(_currentDifficulty);
     }
 
@@ -202,10 +205,54 @@ public class SudokuGameManager : MonoBehaviour
 
     public void SaveGame()
     {
-        // For your internship: This is a great place to show off PlayerPrefs or JSON saving!
-        Debug.Log("Game Saved!");
+        SudokuSaveData data = new SudokuSaveData();
+        data.difficulty = _currentDifficulty;
+
+        for (int r = 0; r < 9; r++)
+        {
+            for (int c = 0; c < 9; c++)
+            {
+                int i = r * 9 + c;
+                data.currentValues[i] = _allCells[r, c].Value;
+                data.fixedStatus[i] = _allCells[r, c].isFixed;
+                data.solutionValues[i] = _solution[r, c];
+            }
+        }
+        
+        string json = JsonUtility.ToJson(data);
+        File.WriteAllText(Application.persistentDataPath + "/save.json", json);
+        Debug.Log("Saved to: " + Application.persistentDataPath);
     }
 
+    public void LoadGame()
+    {
+        string path = Application.persistentDataPath + "/save.json";
+        if (!File.Exists(path)) return;
+
+        string json = File.ReadAllText(path);
+        SudokuSaveData data = JsonUtility.FromJson<SudokuSaveData>(json);
+
+        ShowPanel(gamePanel);
+        foreach (Transform child in gridParent) Destroy(child.gameObject);
+
+        for (int r = 0; r < 9; r++)
+        {
+            for (int c = 0; c < 9; c++)
+            {
+                int i = r * 9 + c;
+                _solution[r, c] = data.solutionValues[i];
+                GameObject go = Instantiate(cellPrefab, gridParent);
+                SudokuCell cell = go.GetComponent<SudokuCell>();
+                cell.Setup(data.currentValues[i], this);
+                cell.isFixed = data.fixedStatus[i];
+                cell.row = r;
+                cell.col = c;
+                _allCells[r, c] = cell;
+            }
+        }
+        OnCellSelected(_allCells[0, 0]);
+    }
+    
     public void QuitToMenu()
     {
         _undoStack.Clear();
@@ -347,4 +394,13 @@ public class SudokuGameManager : MonoBehaviour
     }
 
     #endregion
+
+    [System.Serializable]
+    public class SudokuSaveData
+    {
+        public int[] currentValues = new int[81];
+        public bool[] fixedStatus = new bool[81];
+        public int[] solutionValues = new int[81];
+        public int difficulty;
+    }
 }
