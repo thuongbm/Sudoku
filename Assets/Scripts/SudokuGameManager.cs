@@ -9,6 +9,7 @@ public class SudokuGameManager : MonoBehaviour
     public GameObject difficultyPanel;
     public GameObject gamePanel;
     public GameObject congratsPanel;
+    public GameObject saveGamePanel;
 
     [Header("3 Save Slots Configuration")]
     public SaveSlotUI[] saveSlots = new SaveSlotUI[3]; // Clean dropdown array for slots 1, 2, and 3
@@ -34,6 +35,11 @@ public class SudokuGameManager : MonoBehaviour
         // Start by only showing the Main Menu
         ShowPanel(mainMenuPanel); 
         CheckForSaveData();
+        
+        if (saveGamePanel != null)
+        {
+            saveGamePanel.SetActive(false);
+        }
     }
 
     void Update()
@@ -266,8 +272,18 @@ public class SudokuGameManager : MonoBehaviour
         // Refresh the layout right away to bring back the plus button!
         CheckForSaveData();
     }
+
+    public void OpenSaveGameMenu()
+    {
+        if (saveGamePanel != null)
+        {
+            saveGamePanel.SetActive(true);
+        }
+        
+        CheckForSaveData();
+    }
     
-    public void SaveGame()
+    public void SaveGameToSlot(int slotIndex)
     {
         SudokuSaveData data = new SudokuSaveData();
         data.difficulty = _currentDifficulty;
@@ -279,17 +295,28 @@ public class SudokuGameManager : MonoBehaviour
                 int i = r * 9 + c;
                 data.currentValues[i] = _allCells[r, c].Value;
                 data.fixedStatus[i] = _allCells[r, c].isFixed;
-                data.solutionValues[i] = _solution[r, c];
+                data.solutionValues[i] = _solution[r, c]; 
             }
         }
         
         string json = JsonUtility.ToJson(data);
-        // DYNAMIC PATH: Writes data cleanly to the active target slot file
-        string path = Application.persistentDataPath + $"/save_{_currentSlotIndex}.json";
+        // Dynamic path based on which slot button was clicked
+        string path = Application.persistentDataPath + $"/save_{slotIndex}.json";
         File.WriteAllText(path, json);
-        Debug.Log($"Saved to Slot {_currentSlotIndex} at: {path}");
+        Debug.Log($"Successfully saved game data into Slot {slotIndex} at: {path}");
         
+        // Instantly refresh the cards 
         CheckForSaveData();
+        
+        // Auto close the selection screen box after writing data
+        CloseSavePanel();
+    }
+    public void CloseSavePanel()
+    {
+        if (saveGamePanel != null)
+        {
+            saveGamePanel.SetActive(false);
+        }
     }
 
     // Call this from your play/continue icon buttons, passing the index (0, 1, or 2)
@@ -323,6 +350,8 @@ public class SudokuGameManager : MonoBehaviour
             }
         }
         OnCellSelected(_allCells[0, 0]);
+        
+        CloseSavePanel();
     }
     
     public void QuitToMenu()
