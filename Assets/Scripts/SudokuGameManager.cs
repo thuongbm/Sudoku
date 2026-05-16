@@ -9,27 +9,31 @@ public class SudokuGameManager : MonoBehaviour
     public GameObject difficultyPanel;
     public GameObject gamePanel;
     public GameObject congratsPanel;
+
+    [Header("3 Save Slots Configuration")]
+    public SaveSlotUI[] saveSlots = new SaveSlotUI[3]; // Clean dropdown array for slots 1, 2, and 3
     
     [Header("UI Setup")]
     public GameObject cellPrefab; // Sudoku cell prefab
     public Transform gridParent; // The object with the GridLayoutGroup
+    
+    [Header("Main menu References")]
+    public UnityEngine.UI.Button loadGameButton;
     
     private SudokuCell[,] _allCells = new SudokuCell[9, 9];
     private int[,] _solution = new int[9, 9]; 
     private int[,] _puzzle = new int[9, 9]; 
     private SudokuCell _selectedCell;
     private int _currentDifficulty = 40; // Default to Medium
+    private int _currentSlotIndex = 0; // Tracks which slot is currently playing
     
     private Stack<SudokuMove> _undoStack = new Stack<SudokuMove>();
-    private struct SudokuMove
-    {
-        public SudokuCell cell;
-        public int preValue;
-    }
+
     void Start()
     {
         // Start by only showing the Main Menu
         ShowPanel(mainMenuPanel); 
+        CheckForSaveData();
     }
 
     void Update()
@@ -52,6 +56,13 @@ public class SudokuGameManager : MonoBehaviour
     public void OpenDifficultySelection()
     {
         ShowPanel(difficultyPanel);
+    }
+
+    // Call this helper method from your large "+" Plus Buttons first
+    public void SelectSlotForNewGame(int slotIndex)
+    {
+        _currentSlotIndex = slotIndex; // Remember where we are starting the game
+        OpenDifficultySelection();
     }
 
     public void SetDifficulty(int numberOfHoles)
@@ -91,13 +102,8 @@ public class SudokuGameManager : MonoBehaviour
         // Clear existing board UI
         foreach(Transform child in gridParent) Destroy(child.gameObject);
         
-        // 1. Generate full solution
-        _solution = new int[9, 9];
-        FillBoardRecursive(_solution, 0, 0);
-        
-        // 2. Clone solution to puzzle and remove numbers
-        _puzzle = (int[,])_solution.Clone(); 
-        RemoveNumbers(_puzzle, difficulty); 
+        // MODULAR CALL: Call your isolated mathematical static calculation handler!
+        SudokuGenerator.GeneratePuzzle(difficulty, out _solution, out _puzzle);
         
         // 3. Spawn the UI cells
         CreateBoard();
@@ -181,7 +187,7 @@ public class SudokuGameManager : MonoBehaviour
         }
     }
 
-    #region Side Menu Funcions
+    #region Side Menu Functions
 
     public void UndoMove()
     {
@@ -203,6 +209,64 @@ public class SudokuGameManager : MonoBehaviour
         }
     }
 
+    public void CheckForSaveData()
+    {
+        // Automatically scan through all 3 save slots inside a loop
+        for (int i = 0; i < 3; i++)
+        {
+            string path = Application.persistentDataPath + $"/save_{i}.json";
+            SaveSlotUI slotUI = saveSlots[i];
+
+            if (File.Exists(path))
+            {
+                //show object
+                slotUI.emptyStateGroup.SetActive(false);
+                slotUI.filledStateGroup.SetActive(true);
+                
+                //read file data to display
+                string json = File.ReadAllText(path);
+                SudokuSaveData data = JsonUtility.FromJson<SudokuSaveData>(json);
+
+                int filledCells = 0;
+                for (int j = 0; j < 81; j++)
+                    if (data.currentValues[j] != 0)
+                        filledCells++;
+                int progressPercent = Mathf.RoundToInt((filledCells / (float)81) * 100);
+                
+                //Update the text
+                slotUI.difficultyText.text = "Difficulty: " + GetDifficultyname(data.difficulty);
+                slotUI.dateText.text = "Date: " + System.DateTime.Now.ToString("dd/MM/yyyy");
+                slotUI.progressText.text = $"Progress: {progressPercent}%";
+            }
+            else
+            {
+                slotUI.emptyStateGroup.SetActive(true);
+                slotUI.filledStateGroup.SetActive(false);
+            }
+        }
+    }
+
+    private string GetDifficultyname(int holes)
+    {
+        if (holes <= 30) return "Easy";
+        if (holes <= 45) return "Medium";
+        return "Hard";
+    }
+
+    // Call this from your trash icon buttons, passing the index (0, 1, or 2)
+    public void DeleteSaveFileFromSlot(int slotIndex)
+    {
+        string path = Application.persistentDataPath + $"/save_{slotIndex}.json";
+        if (File.Exists(path))
+        {
+            File.Delete(path);
+            Debug.Log($"Slot {slotIndex} save file deleted.");
+        }
+    
+        // Refresh the layout right away to bring back the plus button!
+        CheckForSaveData();
+    }
+    
     public void SaveGame()
     {
         SudokuSaveData data = new SudokuSaveData();
@@ -220,18 +284,26 @@ public class SudokuGameManager : MonoBehaviour
         }
         
         string json = JsonUtility.ToJson(data);
-        File.WriteAllText(Application.persistentDataPath + "/save.json", json);
-        Debug.Log("Saved to: " + Application.persistentDataPath);
+        // DYNAMIC PATH: Writes data cleanly to the active target slot file
+        string path = Application.persistentDataPath + $"/save_{_currentSlotIndex}.json";
+        File.WriteAllText(path, json);
+        Debug.Log($"Saved to Slot {_currentSlotIndex} at: {path}");
+        
+        CheckForSaveData();
     }
 
-    public void LoadGame()
+    // Call this from your play/continue icon buttons, passing the index (0, 1, or 2)
+    public void LoadGameFromSlot(int slotIndex)
     {
-        string path = Application.persistentDataPath + "/save.json";
+        _currentSlotIndex = slotIndex; // Keep track of the active slot context
+        string path = Application.persistentDataPath + $"/save_{slotIndex}.json";
         if (!File.Exists(path)) return;
 
         string json = File.ReadAllText(path);
         SudokuSaveData data = JsonUtility.FromJson<SudokuSaveData>(json);
 
+        _currentDifficulty = data.difficulty;
+        
         ShowPanel(gamePanel);
         foreach (Transform child in gridParent) Destroy(child.gameObject);
 
@@ -335,72 +407,4 @@ public class SudokuGameManager : MonoBehaviour
     }
 
     #endregion
-
-    #region Backtracking Algorithm
-
-    bool FillBoardRecursive(int[,] grid, int row, int col)
-    {
-        if (col >= 9) { row++; col = 0; }
-        if (row >= 9) return true;
-
-        List<int> nums = new List<int> { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-        // Shuffle numbers for unique board generation
-        for (int i = 0; i < nums.Count; i++) {
-            int temp = nums[i];
-            int rand = Random.Range(i, nums.Count);
-            nums[i] = nums[rand];
-            nums[rand] = temp;
-        }
-
-        foreach (int n in nums) 
-        {
-            if (IsSafe(grid, row, col, n))
-            {
-                grid[row, col] = n;
-                if (FillBoardRecursive(grid, row, col + 1)) return true;
-                grid[row, col] = 0;
-            }
-        }
-        return false;
-    }
-
-    bool IsSafe(int[,] grid, int row, int col, int num)
-    {
-        for (int i = 0; i < 9; i++)
-        {
-            if (grid[row, i] == num || grid[i, col] == num) return false;
-        }
-
-        int sRow = row - row % 3, sCol = col - col % 3;
-        for (int i = 0; i < 3; i++)
-            for (int j = 0; j < 3; j++)
-                if (grid[i + sRow, j + sCol] == num) return false;
-
-        return true;
-    }
-    
-    void RemoveNumbers(int[,] grid, int count)
-    {
-        while (count > 0)
-        {
-            int r = Random.Range(0, 9);
-            int c = Random.Range(0, 9);
-            if (grid[r, c] != 0)
-            {
-                grid[r, c] = 0;
-                count--;
-            }
-        }
-    }
-
-    #endregion
-
-    [System.Serializable]
-    public class SudokuSaveData
-    {
-        public int[] currentValues = new int[81];
-        public bool[] fixedStatus = new bool[81];
-        public int[] solutionValues = new int[81];
-        public int difficulty;
-    }
 }
