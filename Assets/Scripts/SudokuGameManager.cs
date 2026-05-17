@@ -10,9 +10,11 @@ public class SudokuGameManager : MonoBehaviour
     public GameObject gamePanel;
     public GameObject congratsPanel;
     public GameObject saveGamePanel;
+    public GameObject loadGamePanel;
 
     [Header("3 Save Slots Configuration")]
-    public SaveSlotUI[] saveSlots = new SaveSlotUI[3]; // Clean dropdown array for slots 1, 2, and 3
+    public SaveSlotUI[] saveMenuSlots = new SaveSlotUI[3]; // Clean dropdown array for slots 1, 2, and 3
+    public SaveSlotUI[] mainMenuSlots = new SaveSlotUI[3];
     
     [Header("UI Setup")]
     public GameObject cellPrefab; // Sudoku cell prefab
@@ -46,6 +48,7 @@ public class SudokuGameManager : MonoBehaviour
         
         // Hide overlay panels safely on startup
         if (saveGamePanel != null) saveGamePanel.SetActive(false);
+        if (loadGamePanel != null) loadGamePanel.SetActive(false);
         if (confirmationDialogPanel != null) confirmationDialogPanel.SetActive(false);
         if (deleteConfirmationDialogPanel != null) deleteConfirmationDialogPanel.SetActive(false);
     }
@@ -229,15 +232,14 @@ public class SudokuGameManager : MonoBehaviour
         for (int i = 0; i < 3; i++)
         {
             string path = Application.persistentDataPath + $"/save_{i}.json";
-            SaveSlotUI slotUI = saveSlots[i];
+            
+            // Extract references for both paths safely
+            SaveSlotUI mainUI = mainMenuSlots.Length > i ? mainMenuSlots[i] : null;
+            SaveSlotUI saveUI = saveMenuSlots.Length > i ? saveMenuSlots[i] : null;
 
             if (File.Exists(path))
             {
-                //show object
-                slotUI.emptyStateGroup.SetActive(false);
-                slotUI.filledStateGroup.SetActive(true);
-                
-                //read file data to display
+                // Read hard disk data template
                 string json = File.ReadAllText(path);
                 SudokuSaveData data = JsonUtility.FromJson<SudokuSaveData>(json);
 
@@ -247,15 +249,39 @@ public class SudokuGameManager : MonoBehaviour
                         filledCells++;
                 int progressPercent = Mathf.RoundToInt((filledCells / (float)81) * 100);
                 
-                //Update the text
-                slotUI.difficultyText.text = "Difficulty: " + GetDifficultyname(data.difficulty);
-                slotUI.dateText.text = "Date: " + System.DateTime.Now.ToString("dd/MM/yyyy");
-                slotUI.progressText.text = $"Progress: {progressPercent}%";
+                string diffText = "Difficulty: " + GetDifficultyname(data.difficulty);
+                string dateTextStr = "Date: " + System.DateTime.Now.ToString("dd/MM/yyyy");
+                string progTextStr = $"Progress: {progressPercent}%";
+
+                // Update Main Menu Cards if assigned
+                if (mainUI != null) {
+                    mainUI.emptyStateGroup.SetActive(false);
+                    mainUI.filledStateGroup.SetActive(true);
+                    mainUI.difficultyText.text = diffText;
+                    mainUI.dateText.text = dateTextStr;
+                    mainUI.progressText.text = progTextStr;
+                }
+
+                // Update In-Game Save Popup Cards if assigned
+                if (saveUI != null) {
+                    saveUI.emptyStateGroup.SetActive(false);
+                    saveUI.filledStateGroup.SetActive(true);
+                    saveUI.difficultyText.text = diffText;
+                    saveUI.dateText.text = dateTextStr;
+                    saveUI.progressText.text = progTextStr;
+                }
             }
             else
             {
-                slotUI.emptyStateGroup.SetActive(true);
-                slotUI.filledStateGroup.SetActive(false);
+                // Toggle back to pristine Empty States "+" indicators
+                if (mainUI != null) {
+                    mainUI.emptyStateGroup.SetActive(true);
+                    mainUI.filledStateGroup.SetActive(false);
+                }
+                if (saveUI != null) {
+                    saveUI.emptyStateGroup.SetActive(true);
+                    saveUI.filledStateGroup.SetActive(false);
+                }
             }
         }
     }
@@ -276,7 +302,22 @@ public class SudokuGameManager : MonoBehaviour
         
         CheckForSaveData();
     }
-
+    public void OpenLoadGameMenu()
+    {
+        if (loadGamePanel != null)
+        {
+            loadGamePanel.SetActive(true);
+        }
+        
+        CheckForSaveData(); // Refresh slot files presentation layouts
+    }
+    public void CloseLoadGamePanel()
+    {
+        if (loadGamePanel != null)
+        {
+            loadGamePanel.SetActive(false);
+        }
+    }
     public void CloseSavePanel()
     {
         if (saveGamePanel != null)
@@ -317,6 +358,7 @@ public class SudokuGameManager : MonoBehaviour
         }
         OnCellSelected(_allCells[0, 0]);
         
+        CloseLoadGamePanel();
         CloseSavePanel();
     }
     

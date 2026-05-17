@@ -7,7 +7,6 @@
     <list default="true" id="7b854b52-3f19-4723-bd23-25bc5aa9f448" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/.idea.Sudoku/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/.idea.Sudoku/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Assets/Scenes/0.unity" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scenes/0.unity" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/Assets/Scenes/0.unity.meta" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scenes/0.unity.meta" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/Assets/Scripts/SudokuGameManager.cs" beforeDir="false" afterPath="$PROJECT_DIR$/Assets/Scripts/SudokuGameManager.cs" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
@@ -103,7 +102,8 @@
       <workItem from="1778688669184" duration="4947000" />
       <workItem from="1778919830883" duration="5908000" />
       <workItem from="1778949173577" duration="6033000" />
-      <workItem from="1779008752885" duration="6061000" />
+      <workItem from="1779008752885" duration="6113000" />
+      <workItem from="1779035693759" duration="3204000" />
     </task>
     <servers />
   </component>
