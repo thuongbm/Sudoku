@@ -21,12 +21,20 @@ public class SudokuGameManager : MonoBehaviour
     [Header("Main menu References")]
     public UnityEngine.UI.Button loadGameButton;
     
+    [Header("Confirmation Dialog Popups")]
+    public GameObject confirmationDialogPanel;
+    public GameObject deleteConfirmationDialogPanel; // Drag your Delete_Confirmation_Dialog_Panel here
+    
     private SudokuCell[,] _allCells = new SudokuCell[9, 9];
     private int[,] _solution = new int[9, 9]; 
     private int[,] _puzzle = new int[9, 9]; 
     private SudokuCell _selectedCell;
     private int _currentDifficulty = 40; // Default to Medium
     private int _currentSlotIndex = 0; // Tracks which slot is currently playing
+    
+    // Temp storage containers for the validation workflows
+    private int _pendingSaveSlotIndex = -1;
+    private int _pendingDeleteSlotIndex = -1;
     
     private Stack<SudokuMove> _undoStack = new Stack<SudokuMove>();
 
@@ -36,10 +44,10 @@ public class SudokuGameManager : MonoBehaviour
         ShowPanel(mainMenuPanel); 
         CheckForSaveData();
         
-        if (saveGamePanel != null)
-        {
-            saveGamePanel.SetActive(false);
-        }
+        // Hide overlay panels safely on startup
+        if (saveGamePanel != null) saveGamePanel.SetActive(false);
+        if (confirmationDialogPanel != null) confirmationDialogPanel.SetActive(false);
+        if (deleteConfirmationDialogPanel != null) deleteConfirmationDialogPanel.SetActive(false);
     }
 
     void Update()
@@ -164,7 +172,7 @@ public class SudokuGameManager : MonoBehaviour
             HighlightRelatedArea(_selectedCell.row, _selectedCell.col);
         }
     }
-
+    
     void HighlightSameValues(int value)
     {
         foreach (SudokuCell cell in _allCells)
@@ -259,20 +267,6 @@ public class SudokuGameManager : MonoBehaviour
         return "Hard";
     }
 
-    // Call this from your trash icon buttons, passing the index (0, 1, or 2)
-    public void DeleteSaveFileFromSlot(int slotIndex)
-    {
-        string path = Application.persistentDataPath + $"/save_{slotIndex}.json";
-        if (File.Exists(path))
-        {
-            File.Delete(path);
-            Debug.Log($"Slot {slotIndex} save file deleted.");
-        }
-    
-        // Refresh the layout right away to bring back the plus button!
-        CheckForSaveData();
-    }
-
     public void OpenSaveGameMenu()
     {
         if (saveGamePanel != null)
@@ -282,35 +276,7 @@ public class SudokuGameManager : MonoBehaviour
         
         CheckForSaveData();
     }
-    
-    public void SaveGameToSlot(int slotIndex)
-    {
-        SudokuSaveData data = new SudokuSaveData();
-        data.difficulty = _currentDifficulty;
 
-        for (int r = 0; r < 9; r++)
-        {
-            for (int c = 0; c < 9; c++)
-            {
-                int i = r * 9 + c;
-                data.currentValues[i] = _allCells[r, c].Value;
-                data.fixedStatus[i] = _allCells[r, c].isFixed;
-                data.solutionValues[i] = _solution[r, c]; 
-            }
-        }
-        
-        string json = JsonUtility.ToJson(data);
-        // Dynamic path based on which slot button was clicked
-        string path = Application.persistentDataPath + $"/save_{slotIndex}.json";
-        File.WriteAllText(path, json);
-        Debug.Log($"Successfully saved game data into Slot {slotIndex} at: {path}");
-        
-        // Instantly refresh the cards 
-        CheckForSaveData();
-        
-        // Auto close the selection screen box after writing data
-        CloseSavePanel();
-    }
     public void CloseSavePanel()
     {
         if (saveGamePanel != null)
@@ -354,6 +320,90 @@ public class SudokuGameManager : MonoBehaviour
         CloseSavePanel();
     }
     
+    // SAVE OVERWRITE PROTECTION SYSTEM
+    public void OnSaveSlotClicked(int slotIndex)
+    {
+        string path = Application.persistentDataPath + $"/save_{slotIndex}.json";
+        _pendingSaveSlotIndex = slotIndex; 
+        
+        if (File.Exists(path))
+        {
+            if (confirmationDialogPanel != null) confirmationDialogPanel.SetActive(true);
+        }
+        else
+        {
+            ExecuteSave(_pendingSaveSlotIndex);
+        }
+    }
+
+    public void ConfirmOverwriteSave()
+    {
+        if (_pendingSaveSlotIndex != -1) ExecuteSave(_pendingSaveSlotIndex);
+        CloseConfirmationDialog();
+    }
+
+    private void ExecuteSave(int slotIndex)
+    {
+        SudokuSaveData data = new SudokuSaveData();
+        data.difficulty = _currentDifficulty;
+
+        for (int r = 0; r < 9; r++)
+        {
+            for (int c = 0; c < 9; c++)
+            {
+                int i = r * 9 + c;
+                data.currentValues[i] = _allCells[r, c].Value;
+                data.fixedStatus[i] = _allCells[r, c].isFixed;
+                data.solutionValues[i] = _solution[r, c]; 
+            }
+        }
+    
+        string json = JsonUtility.ToJson(data);
+        string path = Application.persistentDataPath + $"/save_{slotIndex}.json";
+        File.WriteAllText(path, json);
+        Debug.Log($"Data completely overwritten into Slot {slotIndex} at: {path}");
+    
+        CheckForSaveData(); 
+        CloseSavePanel(); 
+    }
+    
+    public void CloseConfirmationDialog()
+    {
+        if (confirmationDialogPanel != null) confirmationDialogPanel.SetActive(false);
+        _pendingSaveSlotIndex = -1; 
+    }
+    
+    // PERMANENT DELETE PROTECTION SYSTEM
+    public void OnDeleteSlotClicked(int slotIndex)
+    {
+        _pendingDeleteSlotIndex = slotIndex; // Cache target selection index
+        if (deleteConfirmationDialogPanel != null)
+        {
+            deleteConfirmationDialogPanel.SetActive(true); // Open the window
+        }
+    }
+
+    public void ConfirmPermanentlyDeleteSave()
+    {
+        if (_pendingDeleteSlotIndex != -1)
+        {
+            string path = Application.persistentDataPath + $"/save_{_pendingDeleteSlotIndex}.json";
+            if (File.Exists(path))
+            {
+                File.Delete(path);
+                Debug.Log($"Permanently erased hard disk data for Slot {_pendingDeleteSlotIndex}");
+            }
+            CheckForSaveData(); // Instantly turns card back into a "+" sign
+        }
+        CloseDeleteConfirmationDialog();
+    }
+
+    public void CloseDeleteConfirmationDialog()
+    {
+        if (deleteConfirmationDialogPanel != null) deleteConfirmationDialogPanel.SetActive(false);
+        _pendingDeleteSlotIndex = -1; // Safe clear cache tracking pointers
+    }
+
     public void QuitToMenu()
     {
         _undoStack.Clear();
@@ -362,7 +412,6 @@ public class SudokuGameManager : MonoBehaviour
     
     public void ChangeTheme()
     {
-        // Simple toggle example: you could swap background colors here
         Debug.Log("Theme Changed!");
     }
     
@@ -385,7 +434,6 @@ public class SudokuGameManager : MonoBehaviour
             {
                 RecordMove(_selectedCell, _selectedCell.Value);
                 _selectedCell.Value = i;
-                // Refresh highlights to show all cells with this new number
                 OnCellSelected(_selectedCell); 
                 CheckWin();
             }
@@ -395,7 +443,6 @@ public class SudokuGameManager : MonoBehaviour
         {
             RecordMove(_selectedCell, _selectedCell.Value);
             _selectedCell.Value = 0;
-            // Return to area highlights since cell is now empty
             OnCellSelected(_selectedCell); 
         }
     }
@@ -405,17 +452,14 @@ public class SudokuGameManager : MonoBehaviour
         int newRow = _selectedCell.row;
         int newCol = _selectedCell.col;
 
-        // Direction Fix: Down increases row, Up decreases row
         if (Input.GetKeyDown(KeyCode.DownArrow)) newRow++;
         if (Input.GetKeyDown(KeyCode.UpArrow)) newRow--;
         if (Input.GetKeyDown(KeyCode.LeftArrow)) newCol--;
         if (Input.GetKeyDown(KeyCode.RightArrow)) newCol++;
 
-        // Wrap-around math (keeps index 0-8)
         newRow = (newRow + 9) % 9;
         newCol = (newCol + 9) % 9;
 
-        // Logic Fix: Use OR (||) so it triggers if either row or col changes
         if (newRow != _selectedCell.row || newCol != _selectedCell.col)
         {
             OnCellSelected(_allCells[newRow, newCol]);
